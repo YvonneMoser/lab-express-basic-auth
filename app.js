@@ -5,7 +5,13 @@ const cookieParser = require('cookie-parser');
 const logger = require('morgan');
 const mongoose = require('mongoose');
 
-const indexRouter = require('./routes/index');
+const router = require('./routes/index');
+const siteRoutes = require('./routes/site-routes');
+
+// Modules used for sessions
+const session = require('express-session');
+const MongoStore = require('connect-mongo')(session);
+
 
 const app = express();
 
@@ -24,7 +30,22 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use('/', indexRouter);
+// Session middleware
+app.use(session({
+  secret: "basic-auth-secret",
+  cookie: { maxAge: 3600000 * 1 },	// 1 hour
+  resave: true,
+  saveUninitialized: true,
+  store: new MongoStore({
+    mongooseConnection: mongoose.connection,
+    ttl: 24 * 60 * 60 // Time to live - 1 day
+  })
+}));
+
+// Routes --> wenn es /secret im ersten nicht findet geht es zum nächsten und sucht es im siteRoute
+app.use('/', router);
+app.use('/', siteRoutes);
+
 
 // -- 404 and error handler
 
